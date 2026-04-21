@@ -34,10 +34,9 @@ export async function subscribeUserToPush(): Promise<boolean> {
         return false;
     }
 
-    // 1) Xin quyền
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-        console.warn("[Push] Người dùng từ chối quyền thông báo.");
+    // Guard: permission đã được TopNavBar xin trước khi gọi hàm này
+    if (Notification.permission !== "granted") {
+        console.warn("[Push] Permission chưa được cấp.");
         return false;
     }
 

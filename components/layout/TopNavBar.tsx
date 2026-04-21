@@ -46,22 +46,38 @@ export function TopNavBar({
 
   const toggleNotification = useCallback(async () => {
     if (!notifSupported || notifLoading) return;
-    setNotifLoading(true);
 
-    try {
-      if (notifEnabled) {
-        // Tắt — hủy đăng ký push + xóa DB
-        await unsubscribeUserFromPush();
-        setNotifEnabled(false);
-      } else {
-        // Bật — xin quyền + register SW + subscribe push + lưu DB
-        const ok = await subscribeUserToPush();
-        setNotifEnabled(ok);
+    if (notifEnabled) {
+      // ── TẮT — phản hồi ngay lập tức ──
+      setNotifEnabled(false);
+      localStorage.setItem("kn_notif", "off");
+      // Hủy push subscription ở background
+      unsubscribeUserFromPush().catch(() => { });
+    } else {
+      // ── BẬT — xin quyền trước, hiện loading ──
+      setNotifLoading(true);
+
+      try {
+        // Bước 1: Xin quyền notification (bắt buộc phải từ click)
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          setNotifLoading(false);
+          return;
+        }
+
+        // Bước 2: Toggle UI ngay khi được grant
+        setNotifEnabled(true);
+        localStorage.setItem("kn_notif", "on");
+
+        // Bước 3: Đăng ký push subscription ở background
+        subscribeUserToPush().catch((err) => {
+          console.warn("[Push] Background subscription failed:", err);
+        });
+      } catch (err) {
+        console.error("[Notification] Toggle error:", err);
+      } finally {
+        setNotifLoading(false);
       }
-    } catch (err) {
-      console.error("[Notification] Toggle error:", err);
-    } finally {
-      setNotifLoading(false);
     }
   }, [notifEnabled, notifSupported, notifLoading]);
 
@@ -130,18 +146,23 @@ export function TopNavBar({
           <button
             id="btn-toggle-notification"
             onClick={toggleNotification}
-            className={`relative w-7 h-7 rounded-full flex items-center justify-center transition-colors ${notifEnabled
-              ? "bg-white/25 hover:bg-white/35"
-              : "bg-white/15 hover:bg-white/25"
+            disabled={notifLoading}
+            className={`relative w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150 active:scale-90 ${notifLoading
+                ? "bg-white/30 cursor-wait"
+                : notifEnabled
+                  ? "bg-white/25 hover:bg-white/35"
+                  : "bg-white/15 hover:bg-white/25"
               }`}
-            title={notifEnabled ? "Tắt thông báo" : "Bật thông báo"}
+            title={notifLoading ? "Đang xử lý..." : notifEnabled ? "Tắt thông báo" : "Bật thông báo"}
           >
             {/* Bell icon */}
-            <svg className="w-4 h-4 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-4 h-4 transition-opacity ${notifLoading ? "opacity-40" : "text-white/90"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
-            {/* Badge: checkmark khi bật, slash khi tắt */}
-            {notifEnabled ? (
+            {/* Badge: spinner / checkmark / slash */}
+            {notifLoading ? (
+              <span className="absolute -top-0.5 -right-0.5 w-3 h-3 border-[1.5px] border-white border-t-transparent rounded-full animate-spin" />
+            ) : notifEnabled ? (
               <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-[1.5px] border-[#2563EB] flex items-center justify-center">
                 <svg className="w-2 h-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
