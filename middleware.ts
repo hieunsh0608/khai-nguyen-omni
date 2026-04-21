@@ -28,7 +28,12 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Kiểm tra cookie đăng nhập
+  // Dev mode: bỏ qua check cookie (iframe preview chặn cookie)
+  if (process.env.NODE_ENV === "development") {
+    return NextResponse.next();
+  }
+
+  // Production: kiểm tra cookie đăng nhập
   const session = req.cookies.get("kn_session")?.value;
 
   if (!session) {

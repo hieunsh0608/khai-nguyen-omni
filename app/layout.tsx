@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -6,9 +6,22 @@ const inter = Inter({
   subsets: ["latin", "vietnamese"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#ffffff",
+};
+
 export const metadata: Metadata = {
   title: "Khai Nguyên Omni",
   description: "Quản lý tin nhắn đa kênh - Omnichannel Messaging",
+  manifest: "/manifest.json",
+  icons: {
+    apple: "/icons/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Khai Nguyên Omni",
+  },
 };
 
 export default function RootLayout({

@@ -7,6 +7,7 @@
 // ============================================================
 
 import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
 
 export type NavTab = "tin-nhan" | "dang-ky" | "chinh-sach" | "khoa-hoc";
 
@@ -27,6 +28,44 @@ export function TopNavBar({
   onOpenSearch: () => void;
 }) {
   const router = useRouter();
+
+  // 🔔 Notification permission state
+  const [notifEnabled, setNotifEnabled] = useState(false);
+  const [notifSupported, setNotifSupported] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setNotifSupported(true);
+      // Khôi phục trạng thái từ permission thật + localStorage
+      const perm = Notification.permission;
+      const userPref = localStorage.getItem("kn_notif") !== "off";
+      setNotifEnabled(perm === "granted" && userPref);
+    }
+  }, []);
+
+  const toggleNotification = useCallback(async () => {
+    if (!notifSupported) return;
+
+    if (notifEnabled) {
+      // Tắt thông báo
+      localStorage.setItem("kn_notif", "off");
+      setNotifEnabled(false);
+    } else {
+      // Bật thông báo — xin quyền nếu chưa có
+      const perm = Notification.permission;
+      if (perm === "default") {
+        const result = await Notification.requestPermission();
+        if (result === "granted") {
+          localStorage.setItem("kn_notif", "on");
+          setNotifEnabled(true);
+        }
+      } else if (perm === "granted") {
+        localStorage.setItem("kn_notif", "on");
+        setNotifEnabled(true);
+      }
+      // perm === "denied" → không làm gì, trình duyệt đã chặn vĩnh viễn
+    }
+  }, [notifEnabled, notifSupported]);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -87,6 +126,36 @@ export function TopNavBar({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
           </svg>
         </button>
+
+        {/* 🔔 Notification Bell Toggle */}
+        {notifSupported && (
+          <button
+            id="btn-toggle-notification"
+            onClick={toggleNotification}
+            className={`relative w-7 h-7 rounded-full flex items-center justify-center transition-colors ${notifEnabled
+                ? "bg-white/25 hover:bg-white/35"
+                : "bg-white/15 hover:bg-white/25"
+              }`}
+            title={notifEnabled ? "Tắt thông báo" : "Bật thông báo"}
+          >
+            {/* Bell icon */}
+            <svg className="w-4 h-4 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            {/* Badge: checkmark khi bật, slash khi tắt */}
+            {notifEnabled ? (
+              <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-[1.5px] border-[#2563EB] flex items-center justify-center">
+                <svg className="w-2 h-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              </span>
+            ) : (
+              <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <span className="block w-[1.5px] h-5 bg-white/70 rotate-45 rounded-full" />
+              </span>
+            )}
+          </button>
+        )}
         <button
           onClick={handleLogout}
           className="w-7 h-7 rounded-full bg-white/20 hover:bg-red-500/80 flex items-center justify-center transition-colors group"
