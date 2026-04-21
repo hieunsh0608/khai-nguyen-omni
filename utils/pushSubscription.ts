@@ -59,12 +59,12 @@ export async function subscribeUserToPush(): Promise<boolean> {
 
         const subJson = subscription.toJSON();
 
-        // 4) Upsert vào bảng push_subscriptions
+        // 4) Upsert vào bảng push_subscriptions (columns: endpoint, p256dh, auth)
         const { error } = await supabase.from("push_subscriptions").upsert(
             {
                 endpoint: subJson.endpoint,
-                keys: subJson.keys,
-                // user_id sẽ được set nếu có auth, hiện tại bỏ trống
+                p256dh: subJson.keys?.p256dh || "",
+                auth: subJson.keys?.auth || "",
             },
             { onConflict: "endpoint" }
         );
