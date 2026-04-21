@@ -8,6 +8,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
+import { subscribeUserToPush, unsubscribeUserFromPush } from "@/utils/pushSubscription";
 
 export type NavTab = "tin-nhan" | "dang-ky" | "chinh-sach" | "khoa-hoc";
 
@@ -29,14 +30,14 @@ export function TopNavBar({
 }) {
   const router = useRouter();
 
-  // 🔔 Notification permission state
+  // 🔔 Notification state
   const [notifEnabled, setNotifEnabled] = useState(false);
   const [notifSupported, setNotifSupported] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && "Notification" in window) {
+    if (typeof window !== "undefined" && "Notification" in window && "serviceWorker" in navigator) {
       setNotifSupported(true);
-      // Khôi phục trạng thái từ permission thật + localStorage
       const perm = Notification.permission;
       const userPref = localStorage.getItem("kn_notif") !== "off";
       setNotifEnabled(perm === "granted" && userPref);
@@ -44,28 +45,25 @@ export function TopNavBar({
   }, []);
 
   const toggleNotification = useCallback(async () => {
-    if (!notifSupported) return;
+    if (!notifSupported || notifLoading) return;
+    setNotifLoading(true);
 
-    if (notifEnabled) {
-      // Tắt thông báo
-      localStorage.setItem("kn_notif", "off");
-      setNotifEnabled(false);
-    } else {
-      // Bật thông báo — xin quyền nếu chưa có
-      const perm = Notification.permission;
-      if (perm === "default") {
-        const result = await Notification.requestPermission();
-        if (result === "granted") {
-          localStorage.setItem("kn_notif", "on");
-          setNotifEnabled(true);
-        }
-      } else if (perm === "granted") {
-        localStorage.setItem("kn_notif", "on");
-        setNotifEnabled(true);
+    try {
+      if (notifEnabled) {
+        // Tắt — hủy đăng ký push + xóa DB
+        await unsubscribeUserFromPush();
+        setNotifEnabled(false);
+      } else {
+        // Bật — xin quyền + register SW + subscribe push + lưu DB
+        const ok = await subscribeUserToPush();
+        setNotifEnabled(ok);
       }
-      // perm === "denied" → không làm gì, trình duyệt đã chặn vĩnh viễn
+    } catch (err) {
+      console.error("[Notification] Toggle error:", err);
+    } finally {
+      setNotifLoading(false);
     }
-  }, [notifEnabled, notifSupported]);
+  }, [notifEnabled, notifSupported, notifLoading]);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -133,8 +131,8 @@ export function TopNavBar({
             id="btn-toggle-notification"
             onClick={toggleNotification}
             className={`relative w-7 h-7 rounded-full flex items-center justify-center transition-colors ${notifEnabled
-                ? "bg-white/25 hover:bg-white/35"
-                : "bg-white/15 hover:bg-white/25"
+              ? "bg-white/25 hover:bg-white/35"
+              : "bg-white/15 hover:bg-white/25"
               }`}
             title={notifEnabled ? "Tắt thông báo" : "Bật thông báo"}
           >
