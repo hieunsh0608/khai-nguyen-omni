@@ -23,7 +23,7 @@ const AI_EXTRACT_WEBHOOK =
 /** Tin nhắn đơn giản truyền từ page.tsx */
 export interface SimplifiedMessage {
   noi_dung: string;
-  nguoi_gui_id: string | null; // null = CSKH gửi
+  chieu_gui: string; // "Khách gửi" | "Trung tâm gửi"
   created_at: string;
 }
 
@@ -51,7 +51,7 @@ export function TabChotThongTin({
     try {
       // Gom nội dung chat thành text cho AI đọc
       const chatContent = messages.map((m) => {
-        const sender = m.nguoi_gui_id ? (khachHoTen || "Khách") : "CSKH";
+        const sender = m.chieu_gui === "Khách gửi" ? (khachHoTen || "Khách hàng") : "CSKH";
         return `[${sender}]: ${m.noi_dung}`;
       }).join("\n");
 

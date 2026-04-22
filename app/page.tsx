@@ -812,10 +812,10 @@ export default function Home() {
                   <div className={`flex items-center gap-2 text-xs text-gray-400 ${refreshing ? "text-blue-500" : pullDistance >= 80 ? "text-green-500" : ""
                     }`}>
                     <div className={`w-4 h-4 border-2 rounded-full ${refreshing
-                        ? "border-blue-500 border-t-transparent animate-spin"
-                        : pullDistance >= 80
-                          ? "border-green-500"
-                          : "border-gray-300"
+                      ? "border-blue-500 border-t-transparent animate-spin"
+                      : pullDistance >= 80
+                        ? "border-green-500"
+                        : "border-gray-300"
                       }`} />
                     {refreshing ? "Đang tải..." : pullDistance >= 80 ? "Thả để tải lại" : "Kéo xuống để tải lại"}
                   </div>
@@ -1194,7 +1194,7 @@ export default function Home() {
                   <TabChotThongTin
                     messages={messages.map((m) => ({
                       noi_dung: m.noi_dung || "",
-                      nguoi_gui_id: m.nguoi_gui_id ?? null,
+                      chieu_gui: m.chieu_gui || "Khách gửi",
                       created_at: m.created_at,
                     }))}
                     khachHoTen={selectedConv?.khach_hang?.ho_ten}
@@ -1288,7 +1288,7 @@ export default function Home() {
             <TabChotThongTin
               messages={messages.map((m) => ({
                 noi_dung: m.noi_dung || "",
-                nguoi_gui_id: m.nguoi_gui_id ?? null,
+                chieu_gui: m.chieu_gui || "Khách gửi",
                 created_at: m.created_at,
               }))}
               khachHoTen={selectedConv?.khach_hang?.ho_ten}
