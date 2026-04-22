@@ -11,6 +11,7 @@ import { isSameDay, getDateLabel } from "@/lib/formatters";
 import { supabase } from "@/utils/supabase/client";
 import { dongBoBanBe } from "@/utils/zaloGroupService";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { MobileInfoDrawer } from "@/components/layout/MobileInfoDrawer";
 
 // Types
@@ -61,6 +62,7 @@ export default function Home() {
 
   // ── Mobile responsive ──
   const isMobile = useIsMobile();
+  const { pulling, pullDistance, refreshing, touchHandlers } = usePullToRefresh();
   const [mobileView, setMobileView] = useState<"list" | "chat">("list");
   const [showMobileInfo, setShowMobileInfo] = useState(false);
 
@@ -796,8 +798,29 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Conversation Cards */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar px-2 py-1.5 space-y-1 min-h-0">
+            {/* Conversation Cards + Pull to Refresh */}
+            <div
+              className="flex-1 overflow-y-auto custom-scrollbar px-2 py-1.5 space-y-1 min-h-0"
+              {...(isMobile ? touchHandlers : {})}
+            >
+              {/* Pull-to-refresh indicator */}
+              {isMobile && pulling && (
+                <div
+                  className="flex items-center justify-center transition-all duration-150"
+                  style={{ height: `${pullDistance}px` }}
+                >
+                  <div className={`flex items-center gap-2 text-xs text-gray-400 ${refreshing ? "text-blue-500" : pullDistance >= 80 ? "text-green-500" : ""
+                    }`}>
+                    <div className={`w-4 h-4 border-2 rounded-full ${refreshing
+                        ? "border-blue-500 border-t-transparent animate-spin"
+                        : pullDistance >= 80
+                          ? "border-green-500"
+                          : "border-gray-300"
+                      }`} />
+                    {refreshing ? "Đang tải..." : pullDistance >= 80 ? "Thả để tải lại" : "Kéo xuống để tải lại"}
+                  </div>
+                </div>
+              )}
               {filteredConversations.length === 0 && (
                 <p className="p-3 text-gray-400 text-xs text-center">
                   {searchQuery ? "Không tìm thấy hội thoại." : "Chưa có hội thoại nào."}
