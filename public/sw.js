@@ -3,6 +3,12 @@
 // Khai Nguyên Omni PWA
 // ============================================================
 
+// ── Install — Skip waiting để kích hoạt ngay ──────────────────
+
+self.addEventListener("install", (event) => {
+    self.skipWaiting();
+});
+
 // ── Push Notification ──────────────────────────────────────────
 
 self.addEventListener("push", (event) => {
@@ -20,7 +26,6 @@ self.addEventListener("push", (event) => {
         body: data.body || "Bạn có tin nhắn mới!",
         icon: "/icons/icon-192x192.png",
         badge: "/icons/icon-192x192.png",
-        vibrate: [100, 50, 100],
         data: {
             url: data.url || "/",
         },

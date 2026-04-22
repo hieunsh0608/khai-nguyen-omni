@@ -1,6 +1,7 @@
 {
     "name": "Khai Nguyên Hoa Ngữ",
     "short_name": "Khai Nguyên Omni",
+    "id": "/",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#ffffff",

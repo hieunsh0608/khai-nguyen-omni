@@ -134,8 +134,21 @@ export default function Home() {
   }, [conversations]);
 
   // Auto-scroll khi messages thay đổi
+  const prevMsgCountRef = useRef(0);
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length === 0) { prevMsgCountRef.current = 0; return; }
+
+    // Vừa load xong conversation → scroll instant (nhảy thẳng xuống cuối)
+    // Tin nhắn mới đến → scroll smooth
+    const isInitialLoad = prevMsgCountRef.current === 0 && messages.length > 0;
+    const behavior = isInitialLoad ? "instant" as const : "smooth" as const;
+
+    // setTimeout để đợi DOM render xong rồi mới scroll
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior });
+    }, isInitialLoad ? 50 : 0);
+
+    prevMsgCountRef.current = messages.length;
   }, [messages]);
 
   // --------------------------------------------------------
