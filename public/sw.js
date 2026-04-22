@@ -34,7 +34,13 @@ self.addEventListener("push", (event) => {
     };
 
     event.waitUntil(
-        self.registration.showNotification(data.title || "Khai Nguyên Omni", options)
+        Promise.all([
+            self.registration.showNotification(data.title || "Khai Nguyên Omni", options),
+            // Báo cho tất cả tab đang mở: có tin nhắn mới → fetch ngay
+            clients.matchAll({ type: "window", includeUncontrolled: true }).then((cls) => {
+                cls.forEach((client) => client.postMessage({ type: "NEW_MESSAGE" }));
+            }),
+        ])
     );
 });
 

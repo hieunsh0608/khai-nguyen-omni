@@ -88,6 +88,7 @@ export default function Home() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const selectedConvIdRef = useRef<string | null>(null);
   const conversationsRef = useRef<HoiThoaiWithDetails[]>([]);
+  const messagesRef = useRef<UITinNhan[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 🔔 Âm thanh thông báo tin nhắn mới
@@ -134,6 +135,10 @@ export default function Home() {
   useEffect(() => {
     conversationsRef.current = conversations;
   }, [conversations]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   // Auto-scroll khi messages thay đổi
   const prevMsgCountRef = useRef(0);
@@ -622,6 +627,61 @@ export default function Home() {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibility);
       supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // --------------------------------------------------------
+  // Lắng nghe Service Worker — khi push notification đến,
+  // SW gửi message → page fetch tin mới ngay lập tức
+  // --------------------------------------------------------
+  useEffect(() => {
+    const handleSWMessage = async (event: MessageEvent) => {
+      if (event.data?.type !== "NEW_MESSAGE") return;
+
+      const convId = selectedConvIdRef.current;
+      if (!convId) return;
+
+      try {
+        const currentMsgs = messagesRef.current;
+        const lastMsg = currentMsgs[currentMsgs.length - 1];
+        const since = lastMsg?.created_at || new Date(0).toISOString();
+
+        const { data: newMsgs } = await supabase
+          .from("tin_nhan")
+          .select("*, nguoi_gui:khach_hang(*)")
+          .eq("hoi_thoai_id", convId)
+          .gt("created_at", since)
+          .order("created_at", { ascending: true });
+
+        if (newMsgs && newMsgs.length > 0) {
+          setMessages((prev) => {
+            const existingIds = new Set(prev.map((m) => m.id));
+            const truly_new = (newMsgs as UITinNhan[]).filter((m) => !existingIds.has(m.id));
+            if (truly_new.length === 0) return prev;
+            return [...prev, ...truly_new];
+          });
+
+          const lastNewMsg = newMsgs[newMsgs.length - 1] as UITinNhan;
+          setConversations((prev) => {
+            const updated = prev.map((c) =>
+              c.id === convId
+                ? { ...c, tin_nhan_cuoi: lastNewMsg, updated_at: lastNewMsg.created_at }
+                : c
+            );
+            updated.sort((a, b) =>
+              new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+            );
+            return updated;
+          });
+        }
+      } catch {
+        // Lỗi fetch → bỏ qua
+      }
+    };
+
+    navigator.serviceWorker?.addEventListener("message", handleSWMessage);
+    return () => {
+      navigator.serviceWorker?.removeEventListener("message", handleSWMessage);
     };
   }, []);
 
