@@ -622,19 +622,7 @@ export default function Home() {
       return ch;
     }
 
-    // Reconnect khi tab/app quay lại foreground (iOS PWA hay mất WebSocket)
-    const handleVisibility = () => {
-      console.log("[Realtime] Visibility đổi sang:", document.visibilityState);
-      if (document.visibilityState === "visible") {
-        console.log("[Realtime] Bắt đầu reconnect channel...");
-        supabase.removeChannel(channel);
-        channel = createRealtimeChannel();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
       supabase.removeChannel(channel);
     };
   }, []);
