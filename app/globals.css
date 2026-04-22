@@ -104,16 +104,4 @@ body {
     bottom: 0;
     z-index: 10;
   }
-
-  /* Khi focus vào textarea, scroll vào vùng nhìn thấy */
-  .chat-input-mobile textarea:focus {
-    scroll-margin-bottom: 20px;
-  }
-
-  /* Đảm bảo html/body không bị overflow khi keyboard mở */
-  html,
-  body {
-    overflow: hidden;
-    overscroll-behavior: none;
-  }
 }
