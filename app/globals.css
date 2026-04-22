@@ -27,13 +27,16 @@ body {
 .custom-scrollbar::-webkit-scrollbar {
   width: 5px;
 }
+
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 99px;
 }
+
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
@@ -42,9 +45,11 @@ body {
 .chat-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
+
 .chat-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .chat-scrollbar::-webkit-scrollbar-thumb {
   background: #d1d5db;
   border-radius: 99px;
@@ -56,6 +61,7 @@ body {
     opacity: 0;
     transform: scale(0.95) translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -63,8 +69,15 @@ body {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Hide scrollbar for mobile horizontal nav */
@@ -72,6 +85,7 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
@@ -89,5 +103,17 @@ body {
     position: sticky;
     bottom: 0;
     z-index: 10;
+  }
+
+  /* Khi focus vào textarea, scroll vào vùng nhìn thấy */
+  .chat-input-mobile textarea:focus {
+    scroll-margin-bottom: 20px;
+  }
+
+  /* Đảm bảo html/body không bị overflow khi keyboard mở */
+  html,
+  body {
+    overflow: hidden;
+    overscroll-behavior: none;
   }
 }

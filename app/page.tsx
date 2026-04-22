@@ -995,6 +995,12 @@ export default function Home() {
                         value={inputText}
                         onChange={(e) => setInputText(e.target.value)}
                         onKeyDown={handleKeyDown}
+                        onFocus={() => {
+                          // iOS: scroll input vào vùng nhìn thấy khi keyboard mở
+                          setTimeout(() => {
+                            textareaRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+                          }, 300);
+                        }}
                         placeholder="Trả lời tin nhắn từ Khai Nguyên Hoa Ngữ..."
                         className="flex-1 px-3 py-2.5 text-sm outline-none resize-none bg-transparent min-h-[40px] max-h-[100px]"
                         disabled={sending}

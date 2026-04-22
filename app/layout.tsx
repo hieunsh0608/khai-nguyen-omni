@@ -8,6 +8,7 @@ const inter = Inter({
 
 export const viewport: Viewport = {
   themeColor: "#ffffff",
+  interactiveWidget: "resizes-content",
 };
 
 export const metadata: Metadata = {
