@@ -244,6 +244,17 @@ export default function Home() {
     setInputText("");
     setSending(true);
 
+    // ✅ Cập nhật luôn tin_nhan_cuoi trong danh sách hội thoại (optimistic)
+    setConversations((prev) => {
+      const updated = prev.map((c) =>
+        c.id === selectedConvId
+          ? { ...c, tin_nhan_cuoi: tempMsg, updated_at: tempMsg.created_at }
+          : c
+      );
+      updated.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+      return updated;
+    });
+
     const payload = {
       zalo_id: conv.khach_hang?.zalo_id || "",
       text,
