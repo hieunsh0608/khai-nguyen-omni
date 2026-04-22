@@ -143,10 +143,19 @@ export default function Home() {
     const isInitialLoad = prevMsgCountRef.current === 0 && messages.length > 0;
     const behavior = isInitialLoad ? "instant" as const : "smooth" as const;
 
-    // setTimeout để đợi DOM render xong rồi mới scroll
-    setTimeout(() => {
+    const scrollToBottom = () => {
       messagesEndRef.current?.scrollIntoView({ behavior });
-    }, isInitialLoad ? 50 : 0);
+    };
+
+    if (isInitialLoad) {
+      // Scroll lần 1: sau khi DOM render text
+      setTimeout(scrollToBottom, 100);
+      // Scroll lần 2: sau khi ảnh/media load xong (mobile chậm hơn)
+      setTimeout(scrollToBottom, 500);
+    } else {
+      // Tin nhắn mới → scroll ngay
+      scrollToBottom();
+    }
 
     prevMsgCountRef.current = messages.length;
   }, [messages]);
