@@ -11,6 +11,7 @@ import { isSameDay, getDateLabel } from "@/lib/formatters";
 import { supabase } from "@/utils/supabase/client";
 import { dongBoBanBe } from "@/utils/zaloGroupService";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { useVisualViewport } from "@/hooks/useVisualViewport";
 import { MobileInfoDrawer } from "@/components/layout/MobileInfoDrawer";
 
 // Types
@@ -61,6 +62,7 @@ export default function Home() {
 
   // ── Mobile responsive ──
   const isMobile = useIsMobile();
+  const vvHeight = useVisualViewport();
   const [mobileView, setMobileView] = useState<"list" | "chat">("list");
   const [showMobileInfo, setShowMobileInfo] = useState(false);
 
@@ -694,7 +696,10 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col h-dvh overflow-hidden bg-[#eef2f6]">
+    <div
+      className="flex flex-col overflow-hidden bg-[#eef2f6]"
+      style={{ height: vvHeight ? `${vvHeight}px` : '100dvh' }}
+    >
       {/* Top Navigation Bar */}
       <TopNavBar
         activeTab={activeTab}
