@@ -474,125 +474,153 @@ export default function Home() {
   // Supabase Realtime — lắng nghe INSERT trên bảng tin_nhan
   // --------------------------------------------------------
   useEffect(() => {
-    const channel = supabase
-      .channel("realtime-tin-nhan")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "tin_nhan",
-        },
-        async (payload) => {
-          const rawMsg = payload.new as TinNhan & { nguoi_gui_id?: string | null };
+    let channel = createRealtimeChannel();
 
-          // 🔔 Phát âm thanh khi KHÁCH gửi tin nhắn (nếu user bật thông báo)
-          const notifPref = typeof window !== "undefined" && localStorage.getItem("kn_notif") !== "off";
-          if (rawMsg.chieu_gui === "Khách gửi" && notifySoundRef.current && notifPref) {
+    function createRealtimeChannel() {
+      const ch = supabase
+        .channel("realtime-tin-nhan-" + Date.now()) // unique name tránh conflict
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "tin_nhan",
+          },
+          async (payload) => {
             try {
-              notifySoundRef.current.currentTime = 0;
-              notifySoundRef.current.play();
-            } catch (err) {
-              console.warn("[Notification] Trình duyệt chặn autoplay:", err);
-            }
-          }
+              const rawMsg = payload.new as TinNhan & { nguoi_gui_id?: string | null };
 
-          const enrichWithSender = async (): Promise<UITinNhan> => {
-            if (!rawMsg.nguoi_gui_id) {
-              return rawMsg as UITinNhan;
-            }
-            const { data: khData } = await supabase
-              .from("khach_hang")
-              .select("*")
-              .eq("id", rawMsg.nguoi_gui_id)
-              .single();
-
-            return {
-              ...(rawMsg as UITinNhan),
-              nguoi_gui: khData ? (khData as KhachHang) : undefined,
-            };
-          };
-
-          // 1) Nếu tin nhắn thuộc hội thoại đang mở
-          if (rawMsg.hoi_thoai_id === selectedConvIdRef.current) {
-            if (rawMsg.chieu_gui === "Trung tâm gửi") {
-              setMessages((prev) => {
-                const tempIdx = prev.findIndex(
-                  (m) => m._tempId && m.noi_dung === rawMsg.noi_dung && m.chieu_gui === "Trung tâm gửi"
-                );
-                if (tempIdx !== -1) {
-                  const updated = [...prev];
-                  updated[tempIdx] = { ...rawMsg };
-                  return updated;
+              // 🔔 Phát âm thanh khi KHÁCH gửi tin nhắn (nếu user bật thông báo)
+              const notifPref = typeof window !== "undefined" && localStorage.getItem("kn_notif") !== "off";
+              if (rawMsg.chieu_gui === "Khách gửi" && notifySoundRef.current && notifPref) {
+                try {
+                  notifySoundRef.current.currentTime = 0;
+                  notifySoundRef.current.play();
+                } catch (err) {
+                  console.warn("[Notification] Trình duyệt chặn autoplay:", err);
                 }
-                return [...prev, rawMsg as UITinNhan];
-              });
-            } else {
-              const enriched = await enrichWithSender();
-              setMessages((prev) => {
-                if (prev.some((m) => m.id === enriched.id)) return prev;
-                return [...prev, enriched];
-              });
-            }
-          }
+              }
 
-          // 2) Enrich tin nhắn cuối với nguoi_gui (cho group preview)
-          const enrichedMsg = await enrichWithSender();
-
-          // 3) Cập nhật tin nhắn cuối + đẩy hội thoại lên đầu
-          const convExists = conversationsRef.current.some(
-            (c) => c.id === rawMsg.hoi_thoai_id
-          );
-
-          if (convExists) {
-            // Hội thoại đã có trong list → update tin_nhan_cuoi + re-sort
-            setConversations((prev) => {
-              const updated = prev.map((conv) => {
-                if (conv.id === rawMsg.hoi_thoai_id) {
-                  return {
-                    ...conv,
-                    tin_nhan_cuoi: enrichedMsg,
-                    updated_at: rawMsg.created_at,
+              // Enrich với thông tin người gửi (chỉ gọi 1 lần)
+              let enrichedMsg: UITinNhan = rawMsg as UITinNhan;
+              if (rawMsg.nguoi_gui_id) {
+                try {
+                  const { data: khData } = await supabase
+                    .from("khach_hang")
+                    .select("*")
+                    .eq("id", rawMsg.nguoi_gui_id)
+                    .single();
+                  enrichedMsg = {
+                    ...(rawMsg as UITinNhan),
+                    nguoi_gui: khData ? (khData as KhachHang) : undefined,
                   };
+                } catch {
+                  // Nếu fetch sender lỗi, vẫn tiếp tục với rawMsg
                 }
-                return conv;
-              });
+              }
 
-              updated.sort((a, b) => {
-                const timeA = new Date(a.updated_at).getTime();
-                const timeB = new Date(b.updated_at).getTime();
-                return timeB - timeA;
-              });
+              // 1) Nếu tin nhắn thuộc hội thoại đang mở → cập nhật chat
+              if (rawMsg.hoi_thoai_id === selectedConvIdRef.current) {
+                if (rawMsg.chieu_gui === "Trung tâm gửi") {
+                  setMessages((prev) => {
+                    const tempIdx = prev.findIndex(
+                      (m) => m._tempId && m.noi_dung === rawMsg.noi_dung && m.chieu_gui === "Trung tâm gửi"
+                    );
+                    if (tempIdx !== -1) {
+                      const updated = [...prev];
+                      updated[tempIdx] = { ...enrichedMsg };
+                      return updated;
+                    }
+                    return [...prev, enrichedMsg];
+                  });
+                } else {
+                  setMessages((prev) => {
+                    if (prev.some((m) => m.id === enrichedMsg.id)) return prev;
+                    return [...prev, enrichedMsg];
+                  });
+                }
+              }
 
-              return updated;
-            });
-          } else {
-            // Hội thoại MỚI (khách nhắn lần đầu) → fetch từ Supabase rồi thêm vào
-            const { data: newHt } = await supabase
-              .from("hoi_thoai")
-              .select("*, khach_hang(*), zalo_nhom(*)")
-              .eq("id", rawMsg.hoi_thoai_id)
-              .single();
+              // 2) Cập nhật tin nhắn cuối + đẩy hội thoại lên đầu
+              const convExists = conversationsRef.current.some(
+                (c) => c.id === rawMsg.hoi_thoai_id
+              );
 
-            if (newHt) {
-              const newConv: HoiThoaiWithDetails = {
-                ...newHt,
-                khach_hang: newHt.khach_hang || null,
-                zalo_nhom: newHt.zalo_nhom || null,
-                tin_nhan_cuoi: enrichedMsg,
-              };
-              setConversations((prev) => {
-                // Guard: tránh thêm trùng nếu đã có
-                if (prev.some((c) => c.id === newConv.id)) return prev;
-                return [newConv, ...prev];
-              });
+              if (convExists) {
+                setConversations((prev) => {
+                  const updated = prev.map((conv) => {
+                    if (conv.id === rawMsg.hoi_thoai_id) {
+                      return {
+                        ...conv,
+                        tin_nhan_cuoi: enrichedMsg,
+                        updated_at: rawMsg.created_at,
+                      };
+                    }
+                    return conv;
+                  });
+
+                  updated.sort((a, b) => {
+                    const timeA = new Date(a.updated_at).getTime();
+                    const timeB = new Date(b.updated_at).getTime();
+                    return timeB - timeA;
+                  });
+
+                  return updated;
+                });
+              } else {
+                // Hội thoại MỚI → fetch từ Supabase rồi thêm vào
+                try {
+                  const { data: newHt } = await supabase
+                    .from("hoi_thoai")
+                    .select("*, khach_hang(*), zalo_nhom(*)")
+                    .eq("id", rawMsg.hoi_thoai_id)
+                    .single();
+
+                  if (newHt) {
+                    const newConv: HoiThoaiWithDetails = {
+                      ...newHt,
+                      khach_hang: newHt.khach_hang || null,
+                      zalo_nhom: newHt.zalo_nhom || null,
+                      tin_nhan_cuoi: enrichedMsg,
+                    };
+                    setConversations((prev) => {
+                      if (prev.some((c) => c.id === newConv.id)) return prev;
+                      return [newConv, ...prev];
+                    });
+                  }
+                } catch {
+                  // Lỗi fetch hội thoại mới — bỏ qua
+                }
+              }
+            } catch (err) {
+              console.error("[Realtime] Lỗi xử lý tin nhắn:", err);
             }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe((status) => {
+          if (status === "CHANNEL_ERROR") {
+            console.warn("[Realtime] Channel lỗi, thử reconnect sau 3s...");
+            setTimeout(() => {
+              supabase.removeChannel(ch);
+              channel = createRealtimeChannel();
+            }, 3000);
+          }
+        });
+
+      return ch;
+    }
+
+    // Reconnect khi tab/app quay lại foreground (iOS PWA hay mất WebSocket)
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        supabase.removeChannel(channel);
+        channel = createRealtimeChannel();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
       supabase.removeChannel(channel);
     };
   }, []);
