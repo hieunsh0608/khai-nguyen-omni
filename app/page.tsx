@@ -482,6 +482,7 @@ export default function Home() {
     let channel = createRealtimeChannel();
 
     function createRealtimeChannel() {
+      console.log("[Realtime] Đang tạo channel realtime mới...");
       const ch = supabase
         .channel("realtime-tin-nhan-" + Date.now()) // unique name tránh conflict
         .on(
@@ -492,6 +493,7 @@ export default function Home() {
             table: "tin_nhan",
           },
           async (payload) => {
+            console.log("[Realtime] Nhận được INSERT payload:", payload);
             try {
               const rawMsg = payload.new as TinNhan & { nguoi_gui_id?: string | null };
 
@@ -520,12 +522,14 @@ export default function Home() {
                     nguoi_gui: khData ? (khData as KhachHang) : undefined,
                   };
                 } catch {
-                  // Nếu fetch sender lỗi, vẫn tiếp tục với rawMsg
+                  console.warn("[Realtime] Lỗi fetch thông tin khách hàng, bỏ qua.");
                 }
               }
 
               // 1) Nếu tin nhắn thuộc hội thoại đang mở → cập nhật chat
+              console.log("[Realtime] Đang so sánh hoi_thoai_id:", rawMsg.hoi_thoai_id, "với đang mở:", selectedConvIdRef.current);
               if (rawMsg.hoi_thoai_id === selectedConvIdRef.current) {
+                console.log("[Realtime] Tin nhắn thuộc hội thoại đang mở, cập nhật state.messages...");
                 if (rawMsg.chieu_gui === "Trung tâm gửi") {
                   setMessages((prev) => {
                     const tempIdx = prev.findIndex(
@@ -533,7 +537,7 @@ export default function Home() {
                     );
                     if (tempIdx !== -1) {
                       const updated = [...prev];
-                      updated[tempIdx] = { ...enrichedMsg };
+                      updated[tempIdx] = { ...enrichedMsg, status: "sent" }; // Ensure status is sent
                       return updated;
                     }
                     return [...prev, enrichedMsg];
@@ -552,6 +556,7 @@ export default function Home() {
               );
 
               if (convExists) {
+                console.log("[Realtime] Hội thoại đã tồn tại, cập nhật tin nhắn cuối.");
                 setConversations((prev) => {
                   const updated = prev.map((conv) => {
                     if (conv.id === rawMsg.hoi_thoai_id) {
@@ -573,6 +578,7 @@ export default function Home() {
                   return updated;
                 });
               } else {
+                console.log("[Realtime] Hội thoại MỚI, đang fetch thông tin hội thoại...");
                 // Hội thoại MỚI → fetch từ Supabase rồi thêm vào
                 try {
                   const { data: newHt } = await supabase
@@ -594,7 +600,7 @@ export default function Home() {
                     });
                   }
                 } catch {
-                  // Lỗi fetch hội thoại mới — bỏ qua
+                  console.warn("[Realtime] Lỗi fetch hội thoại mới.");
                 }
               }
             } catch (err) {
@@ -603,6 +609,7 @@ export default function Home() {
           }
         )
         .subscribe((status) => {
+          console.log("[Realtime] Trạng thái subcribe:", status);
           if (status === "CHANNEL_ERROR") {
             console.warn("[Realtime] Channel lỗi, thử reconnect sau 3s...");
             setTimeout(() => {
@@ -617,7 +624,9 @@ export default function Home() {
 
     // Reconnect khi tab/app quay lại foreground (iOS PWA hay mất WebSocket)
     const handleVisibility = () => {
+      console.log("[Realtime] Visibility đổi sang:", document.visibilityState);
       if (document.visibilityState === "visible") {
+        console.log("[Realtime] Bắt đầu reconnect channel...");
         supabase.removeChannel(channel);
         channel = createRealtimeChannel();
       }
